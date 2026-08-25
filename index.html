@@ -26,40 +26,27 @@
   <script type="module" src="static/components/slideshow.ts"></script>
   <script type="module" src="static/components/calendar.ts"></script>
   <script type="module" src="static/components/icon.ts"></script>
+  <script type="module" src="static/components/title-bar.ts"></script>
+  <script type="module" src="static/components/menu-bar.ts"></script>
 </head>
 
 <body>
 
-  <script type="text/javascript">
-    function promptAndClose() {
-      if (confirm("Are you sure you want to close this window?")) {
-        alert(`Because of "Security Concerns" we cannot close this tab, however we are able to redirect you`)
-        const opened = window.open("https://zombo.com/", "_top")
-      }
-    }
-  </script>
-
   <div class="window">
-    <div class="title-bar">
-      <span>UOP IT Society - Homepage</span>
-      <div class="title-bar-buttons">
-        <div class="title-bar-button">_</div>
-        <div class="title-bar-button">☐</div>
-        <div role="button" onclick="promptAndClose()" class="title-bar-button">✕</div>
-      </div>
-    </div>
+    <title-bar windowTitle="UOP IT Society - Homepage"></title-bar>
 
-    <div class="menu-bar">
-      <a href="#home" class="menu-item">Home</a>
-      <a href="#committee" class="menu-item">Committee</a>
-      <a href="#events" class="menu-item">Events</a>
-      <a href="#about" class="menu-item">About</a>
-      <a href="https://discord.gg/B2pVEvWZW5" class="menu-item">Discord</a>
-      <a href="https://www.instagram.com/theitsoc/" class="menu-item">Instagram</a>
-      <a href="https://upsu.net/groups/BPX8J/it-society" class="menu-item">Union Pages</a>
-      <a href="/cfncs/" class="menu-item">Python for Non-Computing Students</a>
-    </div>
+    <menu-bar>
+      <menu-bar-item href="#home" >Home</menu-bar-item>
+      <menu-bar-item href="#committee" >Committee</menu-bar-item>
+      <menu-bar-item href="#events" >Events</menu-bar-item>
+      <menu-bar-item href="#about" >About</menu-bar-item>
+      <menu-bar-item href="https://discord.gg/B2pVEvWZW5" >Discord</menu-bar-item>
+      <menu-bar-item href="https://www.instagram.com/theitsoc/" >Instagram</menu-bar-item>
+      <menu-bar-item href="https://upsu.net/groups/BPX8J/it-society" >Union Pages</menu-bar-item>
+      <menu-bar-item href="/cfncs/" >Python for Non-Computing Students</menu-bar-item>
+    </menu-bar>
 
+    <!-- Delete below here for a blank page. Wrap each content block in a <div class="content"></div> -->
 
     <div id="home" class="content">
       <h2>Welcome to the UOP IT Society</h2>
@@ -84,7 +71,8 @@
 
       <h3 id="events"><x-icon iconName="calendar-2" size="20"></x-icon> What's on</h3>
 
-      <p>Click on each event to find out more. If the calendar is empty, no events have been planned for that month yet. For the most up to date information see our Discord.</p>
+      <p>Click on each event to find out more. If the calendar is empty, no events have been planned for that month yet.
+        For the most up to date information see our Discord.</p>
 
       <event-calendar src="/events/events.json"></event-calendar>
 
@@ -115,8 +103,8 @@
           <a href="https://peterd.games" target="_blank">Website</a>
         </committee-card>
 
-        <committee-card name="Anna Kennewell" role="Welfare Officer" course="Computer Science, 3rd Year" pronouns="she/her"
-          bio="Lover of hackathons, competitive coding and spreadsheets">
+        <committee-card name="Anna Kennewell" role="Welfare Officer" course="Computer Science, 3rd Year"
+          pronouns="she/her" bio="Lover of hackathons, competitive coding and spreadsheets">
         </committee-card>
 
       </ul>
