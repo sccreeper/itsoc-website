@@ -46,6 +46,48 @@
       "type": "exams",
       "location": "",
       "description": "The End"
+    },
+    {
+      "title": "Ice Breaker",
+      "date" : "2026-09-25",
+      "type" : "social",
+      "location" : "Guildhall Square & Deco",
+      "description" : "Icebreaker event consisting of a ~25 minute treasure hunt through Portsmouth (PRIZES ON OFFER). Followed by drinks at the Deco - alcohol is optional."
+    },
+    {
+      "title" : "CFNCS W1",
+      "date" : "2026-09-23",
+      "type" : "normal",
+      "location" : "TBD",
+      "description" : "Coding For None Coders induction session"
+    },
+    {
+      "title" : "CFNCS W2",
+      "date" : "2026-09-30",
+      "type" : "normal",
+      "location" : "TBD",
+      "description" : "Variables, data types, and basic maths"
+    },
+    {
+      "title" : "CFNCS W3",
+      "date" : "2026-10-07",
+      "type" : "normal",
+      "location" : "TBD",
+      "description" : "Boolean operations and branching"
+    },
+    {
+      "title" : "CFNCS W4",
+      "date" : "2026-10-14",
+      "type" : "normal",
+      "location" : "TBD",
+      "description" : "Lists sets and dictionaries"
+    },
+    {
+      "title" : "CFNCS W5",
+      "date" : "2026-10-21",
+      "type" : "normal",
+      "location" : "TBD",
+      "description" : "Functions and loops"
     }
   ]
   

@@ -47,16 +47,32 @@ export class MenuBarElement extends LitElement {
             color: #000000;
 
             font-size: 16px;
+
+            display: block;
+        }
+
+        :host a::first-letter {
+            text-decoration: underline;
+        }
+
+        :host div {
+            display: inline;
         }
         `
     ]
 
     @property({reflect: true})
+    accessor label = "";
+
+    @property({reflect: true})
     accessor href = "";
 
+    // btw this stupid DIV! is so the ::first-letter pseudo-selector works correctly. - oscar
     render() {
         return html`
-            <a href=${this.href}> <slot></slot> </a>
+            <div>
+            <a href=${this.href}>${this.label}</a>
+            </div>
         `
     }
 
