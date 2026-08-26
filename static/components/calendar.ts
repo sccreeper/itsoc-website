@@ -15,6 +15,19 @@ enum EventType {
     Exams = <any>"exams"
 }
 
+enum EventPosition {
+    First,
+    Last,
+    Middle,
+    Only,
+}
+
+enum ArrowDirection {
+    Left,
+    Right,
+    None
+}
+
 const EventPrecedence: Record<EventType, number> = {
     [EventType.Normal]: 5,
     [EventType.Social]: 4,
@@ -35,7 +48,7 @@ interface CalendarEvent {
 
 interface CalendarDayData {
     date: Date,
-    wraparound: boolean,
+    wraparound: boolean, /* This day is in a different month, but shows up on the calendar for layout purposes */
     passed: boolean, /* This day has already happened, but not a wraparound */
     events: CalendarEvent[]
 }
@@ -102,8 +115,16 @@ export class CalendarDayElement extends LitElement {
     @property({ attribute: false, type: Object })
     accessor date: Date = new Date();
 
+    @property({ attribute: false, type: Object })
+    accessor viewStartDate = new Date();
+    @property({ attribute: false, type: Object })
+    accessor viewEndDate = new Date();
+
     @property({ attribute: false, type: Array })
     accessor eventData: CalendarEvent[] = [];
+
+    @property({ attribute: false, type: Boolean })
+    accessor wraparound: boolean = false;
 
     private _handleEventClick(e: MouseEvent, eventItem: CalendarEvent[]) {
         e.stopPropagation();
@@ -124,6 +145,40 @@ export class CalendarDayElement extends LitElement {
 
         this.eventData.sort((a, b) => EventPrecedence[b.type] - EventPrecedence[a.type])
 
+        let typeOfOccurrence: EventPosition = EventPosition.Only;
+
+        if (this.eventData.length > 0) {
+            if (this.eventData[0].date.getTime() === this.eventData[0].endDate.getTime()) {
+                typeOfOccurrence = EventPosition.Only;
+
+            } else if (this.date.getTime() === this.eventData[0].date.getTime() || this.date.getTime() === this.viewStartDate.getTime()) {
+                typeOfOccurrence = EventPosition.First;
+
+            } else if (this.date.getTime() === this.eventData[0].endDate.getTime() || this.date.getTime() === this.viewEndDate.getTime()) {
+                typeOfOccurrence = EventPosition.Last;
+
+            } else {
+                typeOfOccurrence = EventPosition.Middle;
+            }
+        }
+
+        const isHeadOrTail: boolean = typeOfOccurrence !== EventPosition.Middle;
+
+        // Determine which way to face arrows
+        let arrowDirection: ArrowDirection = ArrowDirection.None;
+
+        if (this.eventData.length > 0) {
+            if (typeOfOccurrence === EventPosition.First && this.eventData[0].endDate.getTime() === this.date.getTime()) {
+                arrowDirection = ArrowDirection.Left;
+            } else if (typeOfOccurrence === EventPosition.Last && this.eventData[0].date.getTime() === this.date.getTime()) {
+                arrowDirection = ArrowDirection.Right;
+            } else if (typeOfOccurrence === EventPosition.First) {
+                arrowDirection = ArrowDirection.Right;
+            } else if (typeOfOccurrence === EventPosition.Last) {
+                arrowDirection = ArrowDirection.Left;
+            }
+        }
+
         const classes = {
             "normal-event": numEvents == 0 ? false : this.eventData[0].type == EventType.Normal,
             "social-event": numEvents == 0 ? false : this.eventData[0].type == EventType.Social,
@@ -133,7 +188,7 @@ export class CalendarDayElement extends LitElement {
         }
 
         return html`
-            <div class="${classMap(classes)}">
+            <div class="${classMap(classes)}" @click=${this.eventData.length > 0 ? (ev: MouseEvent) => this._handleEventClick(ev, this.eventData) : () => { }}>
             <p id="day">
             ${this.date.getDate()}
             <!-- Easter eggs -->
@@ -142,7 +197,7 @@ export class CalendarDayElement extends LitElement {
             ${(this.eventData.length > 0 && this.eventData[0].type == EventType.Social) ? html`<x-icon iconName="it-beer" size="14"></x-icon>` : ""}
             </p>
 
-            ${this.eventData.length > 0 ? html`<strong @click=${(ev: MouseEvent) => this._handleEventClick(ev, this.eventData)}>${this.eventData[0].title}</strong> ${this.eventData.length > 1 ? html`+ ${this.eventData.length - 1}` : ""}` : ""}
+            ${this.eventData.length > 0 && isHeadOrTail ? html`${arrowDirection === ArrowDirection.Left ? "<<" : ""}<strong>${this.eventData[0].title}</strong>${arrowDirection === ArrowDirection.Right ? ">>" : ""} ${this.eventData.length > 1 ? html`+ ${this.eventData.length - 1}` : ""}` : ""}
 
             </div>`
     }
@@ -153,8 +208,11 @@ export class CalendarElement extends LitElement {
 
     static styles = [css`
         #calendar-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+            display: grid;  
+            grid-template-columns: repeat(7, minmax(75px, 1fr));
+
+            overflow-x: scroll;
+            overflow-y: hidden;
         }
 
         .header-row-day {
@@ -202,15 +260,24 @@ export class CalendarElement extends LitElement {
 
             const rawEvents: any[] = await response.json()
 
-            const parsedEvents: CalendarEvent[] = rawEvents.map((e) => ({
-                title: e.title,
-                type: e.type,
-                location: e.location ? e.location : null,
-                description: e.description,
-                date: new Date(e.date),
-                endDate: e.endDate ? new Date(e.endDate) : new Date(e.date),
-                time : e.time ? e.time : null,
-            }))
+            const parsedEvents: CalendarEvent[] = rawEvents.map((e) => {
+
+                // Normalise to get rid of any daylight saving time related errors.
+                const date = new Date(e.date);
+                date.setHours(0, 0, 0, 0);
+                const endDate = e.endDate ? new Date(e.endDate) : new Date(date);
+                endDate.setHours(0, 0, 0, 0);
+
+                return {
+                    title: e.title,
+                    type: e.type,
+                    location: e.location ? e.location : null,
+                    description: e.description,
+                    date: date,
+                    endDate: endDate,
+                    time: e.time ? e.time : null,
+                }
+            })
 
             // Apply the parsed dates to allDays
 
@@ -361,7 +428,7 @@ export class CalendarElement extends LitElement {
                 }
             )
 
-            return html`<event-calendar-day .date=${d.date} .eventData=${d.events as CalendarEvent[]} class=${dayClassMap}></event-calendar-day>`
+            return html`<event-calendar-day .date=${d.date} .eventData=${d.events as CalendarEvent[]} .wraparound=${d.wraparound} .viewStartDate=${this._allDays[0].date} .viewEndDate=${this._allDays[this._allDays.length - 1].date} class=${dayClassMap}></event-calendar-day>`
 
         })} 
         </div>

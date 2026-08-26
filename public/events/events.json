@@ -1,13 +1,13 @@
 [
     {
-      "title": "Reading week",
+      "title": "Exams",
       "date": "2026-10-24",
       "endDate": "2026-11-01",
       "type": "exams",
       "description": "Assessment and Referral Period (Mid-term)"
     },
     {
-      "title": "Reading week",
+      "title": "Exams",
       "date": "2026-12-05",
       "endDate": "2026-12-20",
       "type": "exams",
@@ -89,5 +89,4 @@
       "location" : "TBD",
       "description" : "Functions and loops"
     }
-  ]
-  
+]  
