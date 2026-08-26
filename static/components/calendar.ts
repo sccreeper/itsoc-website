@@ -1,4 +1,4 @@
-import { html, LitElement, css } from "lit";
+import { html, LitElement, css, type PropertyValues } from "lit";
 import { property, customElement, query, state } from "lit/decorators.js";
 import { classMap } from 'lit/directives/class-map.js';
 import { WindowDialog } from "./window-dialog";
@@ -207,12 +207,36 @@ export class CalendarDayElement extends LitElement {
 export class CalendarElement extends LitElement {
 
     static styles = [css`
+        #calendar-wrapper {
+            position: relative;
+        }
+
         #calendar-container {
             display: grid;  
             grid-template-columns: repeat(7, minmax(75px, 1fr));
 
             overflow-x: scroll;
             overflow-y: hidden;
+        }
+
+        .scroll-arrow {
+            position: absolute;
+            top: 50%;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .scroll-arrow.hidden {
+            visibility: hidden;
+        }
+
+        .scroll-arrow.left {
+            left: 1%;
+        }
+
+        .scroll-arrow.right {
+            right: 1%;
         }
 
         .header-row-day {
@@ -239,6 +263,11 @@ export class CalendarElement extends LitElement {
     private _firstDay = new Date(this._currentDate.getFullYear(), this._currentDate.getMonth(), 1);
     private _lastDay = new Date(this._currentDate.getFullYear(), this._currentDate.getMonth() + 1, 0);
     private _allDays: CalendarDayData[] = []
+
+    @state()
+    private accessor _overflowSides = {left: false, right: false};
+
+    private _resizeObserver: ResizeObserver;
 
     @state()
     private accessor _selectedEvents: CalendarEvent[] = [];
@@ -391,7 +420,8 @@ export class CalendarElement extends LitElement {
 
     constructor() {
         super()
-        this._recalculateCalendar()
+        this._resizeObserver = new ResizeObserver(this._checkOverflow);
+        this._recalculateCalendar();
     }
 
     protected willUpdate(_changedProperties: any): void {
@@ -400,6 +430,46 @@ export class CalendarElement extends LitElement {
             this._recalculateCalendar();
             this.requestUpdate();
         }
+    }
+
+    private _checkOverflow() {
+
+        const calendarContainer = this.renderRoot.querySelector("#calendar-container")!;
+        
+        const PADDING = 1;
+        const maxScrollLeft = calendarContainer.scrollWidth - calendarContainer.clientWidth;
+
+        this._overflowSides = {
+            left: calendarContainer.scrollLeft > PADDING,
+            right: calendarContainer.scrollLeft < maxScrollLeft - PADDING,
+        }
+
+    }
+
+    private _scrollLeft() {
+        const calendarContainer = this.renderRoot.querySelector("#calendar-container")!;
+
+        calendarContainer.scrollTo({
+            left: 0,
+            behavior: "smooth",
+        })
+    }
+
+    private _scrollRight() {
+        const calendarContainer = this.renderRoot.querySelector("#calendar-container")!;
+
+        calendarContainer.scrollTo({
+            left: calendarContainer.scrollWidth,
+            behavior: "smooth",
+        })
+    }
+
+    protected firstUpdated(_changedProperties: PropertyValues): void {
+        const calendarContainer = this.renderRoot.querySelector("#calendar-container")!;
+        
+        this._resizeObserver.observe(calendarContainer);
+        calendarContainer.addEventListener("scroll", this._checkOverflow.bind(this), {passive: true});
+        this._checkOverflow();
     }
 
     render() {
@@ -413,24 +483,30 @@ export class CalendarElement extends LitElement {
             <button title="Next month" @click=${this._handleClickNextMonth}>Next &gt;</button>
         </div>
 
-        <div id="calendar-container" @calendar-event-clicked=${this._handleCalendarEventClicked}>
-            ${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => html`<strong class="header-row-day">${d}</strong>`)}
-            <!-- This line sometimes has an error, about the type of eventData, ignore it, it doesn't mean anything, there is no fix -->
-            ${this._allDays.map((d) => {
-            const todayNormalised = new Date(this._currentDate);
-            todayNormalised.setHours(0, 0, 0, 0)
+        <div id="calendar-wrapper">
+            <div @click=${this._scrollLeft} class="scroll-arrow left ${classMap({hidden: !this._overflowSides.left})}" role="button" aria-label="Scroll left">&lt;</div>
+            <div @click=${this._scrollRight} class="scroll-arrow right ${classMap({hidden: !this._overflowSides.right})}" role="button" aria-label="Scroll right">&gt;</div>
 
-            const dayClassMap = classMap(
-                {
-                    "passed": d.passed,
-                    "wraparound": d.wraparound,
-                    "current-date": todayNormalised.getTime() === d.date.getTime()
-                }
-            )
+            <div id="calendar-container" @calendar-event-clicked=${this._handleCalendarEventClicked}>
 
-            return html`<event-calendar-day .date=${d.date} .eventData=${d.events as CalendarEvent[]} .wraparound=${d.wraparound} .viewStartDate=${this._allDays[0].date} .viewEndDate=${this._allDays[this._allDays.length - 1].date} class=${dayClassMap}></event-calendar-day>`
+                ${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => html`<strong class="header-row-day">${d}</strong>`)}
+                <!-- This line sometimes has an error, about the type of eventData, ignore it, it doesn't mean anything, there is no fix -->
+                ${this._allDays.map((d) => {
+                const todayNormalised = new Date(this._currentDate);
+                todayNormalised.setHours(0, 0, 0, 0)
 
-        })} 
+                const dayClassMap = classMap(
+                    {
+                        "passed": d.passed,
+                        "wraparound": d.wraparound,
+                        "current-date": todayNormalised.getTime() === d.date.getTime()
+                    }
+                )
+
+                return html`<event-calendar-day .date=${d.date} .eventData=${d.events as CalendarEvent[]} .wraparound=${d.wraparound} .viewStartDate=${this._allDays[0].date} .viewEndDate=${this._allDays[this._allDays.length - 1].date} class=${dayClassMap}></event-calendar-day>`
+
+            })} 
+            </div>
         </div>
 
         <window-dialog windowTitle=${this._selectedEvents.length > 1 ? "Events" : "Event"} @window-dialog-closed=${this._closeCalendarEventDialog}>
