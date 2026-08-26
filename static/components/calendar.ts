@@ -1,4 +1,4 @@
-import { html, LitElement, css } from "lit";
+import { html, LitElement, css, type PropertyValues } from "lit";
 import { property, customElement, query, state } from "lit/decorators.js";
 import { classMap } from 'lit/directives/class-map.js';
 import { WindowDialog } from "./window-dialog";
@@ -13,6 +13,19 @@ enum EventType {
     Special = <any>"special", /* E.g. hack pompey */
     Holiday = <any>"holiday", /* Consolidation week etc. */
     Exams = <any>"exams"
+}
+
+enum EventPosition {
+    First,
+    Last,
+    Middle,
+    Only,
+}
+
+enum ArrowDirection {
+    Left,
+    Right,
+    None
 }
 
 const EventPrecedence: Record<EventType, number> = {
@@ -30,11 +43,12 @@ interface CalendarEvent {
     description: string,
     date: Date,
     endDate: Date,
+    time: string,
 }
 
 interface CalendarDayData {
     date: Date,
-    wraparound: boolean,
+    wraparound: boolean, /* This day is in a different month, but shows up on the calendar for layout purposes */
     passed: boolean, /* This day has already happened, but not a wraparound */
     events: CalendarEvent[]
 }
@@ -101,8 +115,16 @@ export class CalendarDayElement extends LitElement {
     @property({ attribute: false, type: Object })
     accessor date: Date = new Date();
 
+    @property({ attribute: false, type: Object })
+    accessor viewStartDate = new Date();
+    @property({ attribute: false, type: Object })
+    accessor viewEndDate = new Date();
+
     @property({ attribute: false, type: Array })
     accessor eventData: CalendarEvent[] = [];
+
+    @property({ attribute: false, type: Boolean })
+    accessor wraparound: boolean = false;
 
     private _handleEventClick(e: MouseEvent, eventItem: CalendarEvent[]) {
         e.stopPropagation();
@@ -123,6 +145,40 @@ export class CalendarDayElement extends LitElement {
 
         this.eventData.sort((a, b) => EventPrecedence[b.type] - EventPrecedence[a.type])
 
+        let typeOfOccurrence: EventPosition = EventPosition.Only;
+
+        if (this.eventData.length > 0) {
+            if (this.eventData[0].date.getTime() === this.eventData[0].endDate.getTime()) {
+                typeOfOccurrence = EventPosition.Only;
+
+            } else if (this.date.getTime() === this.eventData[0].date.getTime() || this.date.getTime() === this.viewStartDate.getTime()) {
+                typeOfOccurrence = EventPosition.First;
+
+            } else if (this.date.getTime() === this.eventData[0].endDate.getTime() || this.date.getTime() === this.viewEndDate.getTime()) {
+                typeOfOccurrence = EventPosition.Last;
+
+            } else {
+                typeOfOccurrence = EventPosition.Middle;
+            }
+        }
+
+        const isHeadOrTail: boolean = typeOfOccurrence !== EventPosition.Middle;
+
+        // Determine which way to face arrows
+        let arrowDirection: ArrowDirection = ArrowDirection.None;
+
+        if (this.eventData.length > 0) {
+            if (typeOfOccurrence === EventPosition.First && this.eventData[0].endDate.getTime() === this.date.getTime()) {
+                arrowDirection = ArrowDirection.Left;
+            } else if (typeOfOccurrence === EventPosition.Last && this.eventData[0].date.getTime() === this.date.getTime()) {
+                arrowDirection = ArrowDirection.Right;
+            } else if (typeOfOccurrence === EventPosition.First) {
+                arrowDirection = ArrowDirection.Right;
+            } else if (typeOfOccurrence === EventPosition.Last) {
+                arrowDirection = ArrowDirection.Left;
+            }
+        }
+
         const classes = {
             "normal-event": numEvents == 0 ? false : this.eventData[0].type == EventType.Normal,
             "social-event": numEvents == 0 ? false : this.eventData[0].type == EventType.Social,
@@ -132,7 +188,7 @@ export class CalendarDayElement extends LitElement {
         }
 
         return html`
-            <div class="${classMap(classes)}">
+            <div class="${classMap(classes)}" @click=${this.eventData.length > 0 ? (ev: MouseEvent) => this._handleEventClick(ev, this.eventData) : () => { }}>
             <p id="day">
             ${this.date.getDate()}
             <!-- Easter eggs -->
@@ -141,7 +197,7 @@ export class CalendarDayElement extends LitElement {
             ${(this.eventData.length > 0 && this.eventData[0].type == EventType.Social) ? html`<x-icon iconName="it-beer" size="14"></x-icon>` : ""}
             </p>
 
-            ${this.eventData.length > 0 ? html`<strong @click=${(ev: MouseEvent) => this._handleEventClick(ev, this.eventData)}>${this.eventData[0].title}</strong> ${this.eventData.length > 1 ? html`+ ${this.eventData.length - 1}` : ""}` : ""}
+            ${this.eventData.length > 0 && isHeadOrTail ? html`${arrowDirection === ArrowDirection.Left ? "<<" : ""}<strong>${this.eventData[0].title}</strong>${arrowDirection === ArrowDirection.Right ? ">>" : ""} ${this.eventData.length > 1 ? html`+ ${this.eventData.length - 1}` : ""}` : ""}
 
             </div>`
     }
@@ -151,9 +207,36 @@ export class CalendarDayElement extends LitElement {
 export class CalendarElement extends LitElement {
 
     static styles = [css`
+        #calendar-wrapper {
+            position: relative;
+        }
+
         #calendar-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+            display: grid;  
+            grid-template-columns: repeat(7, minmax(75px, 1fr));
+
+            overflow-x: scroll;
+            overflow-y: hidden;
+        }
+
+        .scroll-arrow {
+            position: absolute;
+            top: 50%;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .scroll-arrow.hidden {
+            visibility: hidden;
+        }
+
+        .scroll-arrow.left {
+            left: 1%;
+        }
+
+        .scroll-arrow.right {
+            right: 1%;
         }
 
         .header-row-day {
@@ -182,6 +265,11 @@ export class CalendarElement extends LitElement {
     private _allDays: CalendarDayData[] = []
 
     @state()
+    private accessor _overflowSides = {left: false, right: false};
+
+    private _resizeObserver: ResizeObserver;
+
+    @state()
     private accessor _selectedEvents: CalendarEvent[] = [];
 
     @property()
@@ -201,14 +289,24 @@ export class CalendarElement extends LitElement {
 
             const rawEvents: any[] = await response.json()
 
-            const parsedEvents: CalendarEvent[] = rawEvents.map((e) => ({
-                title: e.title,
-                type: e.type,
-                location: e.location,
-                description: e.description,
-                date: new Date(e.date),
-                endDate: e.endDate ? new Date(e.endDate) : new Date(e.date)
-            }))
+            const parsedEvents: CalendarEvent[] = rawEvents.map((e) => {
+
+                // Normalise to get rid of any daylight saving time related errors.
+                const date = new Date(e.date);
+                date.setHours(0, 0, 0, 0);
+                const endDate = e.endDate ? new Date(e.endDate) : new Date(date);
+                endDate.setHours(0, 0, 0, 0);
+
+                return {
+                    title: e.title,
+                    type: e.type,
+                    location: e.location ? e.location : null,
+                    description: e.description,
+                    date: date,
+                    endDate: endDate,
+                    time: e.time ? e.time : null,
+                }
+            })
 
             // Apply the parsed dates to allDays
 
@@ -322,7 +420,8 @@ export class CalendarElement extends LitElement {
 
     constructor() {
         super()
-        this._recalculateCalendar()
+        this._resizeObserver = new ResizeObserver(this._checkOverflow);
+        this._recalculateCalendar();
     }
 
     protected willUpdate(_changedProperties: any): void {
@@ -331,6 +430,46 @@ export class CalendarElement extends LitElement {
             this._recalculateCalendar();
             this.requestUpdate();
         }
+    }
+
+    private _checkOverflow() {
+
+        const calendarContainer = this.renderRoot.querySelector("#calendar-container")!;
+        
+        const PADDING = 1;
+        const maxScrollLeft = calendarContainer.scrollWidth - calendarContainer.clientWidth;
+
+        this._overflowSides = {
+            left: calendarContainer.scrollLeft > PADDING,
+            right: calendarContainer.scrollLeft < maxScrollLeft - PADDING,
+        }
+
+    }
+
+    private _scrollLeft() {
+        const calendarContainer = this.renderRoot.querySelector("#calendar-container")!;
+
+        calendarContainer.scrollTo({
+            left: 0,
+            behavior: "smooth",
+        })
+    }
+
+    private _scrollRight() {
+        const calendarContainer = this.renderRoot.querySelector("#calendar-container")!;
+
+        calendarContainer.scrollTo({
+            left: calendarContainer.scrollWidth,
+            behavior: "smooth",
+        })
+    }
+
+    protected firstUpdated(_changedProperties: PropertyValues): void {
+        const calendarContainer = this.renderRoot.querySelector("#calendar-container")!;
+        
+        this._resizeObserver.observe(calendarContainer);
+        calendarContainer.addEventListener("scroll", this._checkOverflow.bind(this), {passive: true});
+        this._checkOverflow();
     }
 
     render() {
@@ -344,31 +483,39 @@ export class CalendarElement extends LitElement {
             <button title="Next month" @click=${this._handleClickNextMonth}>Next &gt;</button>
         </div>
 
-        <div id="calendar-container" @calendar-event-clicked=${this._handleCalendarEventClicked}>
-            ${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => html`<strong class="header-row-day">${d}</strong>`)}
-            <!-- This line sometimes has an error, about the type of eventData, ignore it, it doesn't mean anything, there is no fix -->
-            ${this._allDays.map((d) => {
-            const todayNormalised = new Date(this._currentDate);
-            todayNormalised.setHours(0, 0, 0, 0)
+        <div id="calendar-wrapper">
+            <div @click=${this._scrollLeft} class="scroll-arrow left ${classMap({hidden: !this._overflowSides.left})}" role="button" aria-label="Scroll left">&lt;</div>
+            <div @click=${this._scrollRight} class="scroll-arrow right ${classMap({hidden: !this._overflowSides.right})}" role="button" aria-label="Scroll right">&gt;</div>
 
-            const dayClassMap = classMap(
-                {
-                    "passed": d.passed,
-                    "wraparound": d.wraparound,
-                    "current-date": todayNormalised.getTime() === d.date.getTime()
-                }
-            )
+            <div id="calendar-container" @calendar-event-clicked=${this._handleCalendarEventClicked}>
 
-            return html`<event-calendar-day .date=${d.date} .eventData=${d.events as CalendarEvent[]} class=${dayClassMap}></event-calendar-day>`
+                ${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => html`<strong class="header-row-day">${d}</strong>`)}
+                <!-- This line sometimes has an error, about the type of eventData, ignore it, it doesn't mean anything, there is no fix -->
+                ${this._allDays.map((d) => {
+                const todayNormalised = new Date(this._currentDate);
+                todayNormalised.setHours(0, 0, 0, 0)
 
-        })} 
+                const dayClassMap = classMap(
+                    {
+                        "passed": d.passed,
+                        "wraparound": d.wraparound,
+                        "current-date": todayNormalised.getTime() === d.date.getTime()
+                    }
+                )
+
+                return html`<event-calendar-day .date=${d.date} .eventData=${d.events as CalendarEvent[]} .wraparound=${d.wraparound} .viewStartDate=${this._allDays[0].date} .viewEndDate=${this._allDays[this._allDays.length - 1].date} class=${dayClassMap}></event-calendar-day>`
+
+            })} 
+            </div>
         </div>
 
         <window-dialog windowTitle=${this._selectedEvents.length > 1 ? "Events" : "Event"} @window-dialog-closed=${this._closeCalendarEventDialog}>
             ${this._selectedEvents.length > 0 ? this._selectedEvents.map((e) => html`
             <h2>${e.title}</h2>
-            <p>${e.date.toLocaleDateString("en-GB")} ${e.date.getTime() != e.endDate.getTime() ? html`- ${e.endDate.toLocaleDateString("en-GB")}` : ""}</p>
-            <p><strong>Location: </strong> ${e.location}</p>
+            <p><x-icon iconName="calendar" size="15"></x-icon> ${e.date.toLocaleDateString("en-GB")} ${e.date.getTime() != e.endDate.getTime() ? html`- ${e.endDate.toLocaleDateString("en-GB")}` : ""}
+            ${e.time ? html`<x-icon iconName="alarm-clock" size="15"></x-icon> ${e.time}` : ""}
+            ${e.location ? html`<x-icon iconName="map-pin" size="15"></x-icon> ${e.location}` : ""}
+            </p>
             <p><strong>Description: </strong> ${e.description}</p>
             `) : ""}
         </window-dialog>

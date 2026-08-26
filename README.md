@@ -41,9 +41,10 @@ You can probably infer from the existing events in `eventsTest.json` and `events
     {
         "title" : "A Title",
         "date" : "1970-01-01", //yyyy-mm-dd
+        "time" : "09:41", // optional, can be any string, but should really be a time
         "type" : "special",
-        "endDate" : "1970-01-02", // Not required
-        "location" : "Somewhere over the rainbow",
+        "endDate" : "1970-01-02", // optional
+        "location" : "Somewhere over the rainbow", // optional
         "description" : "Turn up and find out"
     }
 ]
