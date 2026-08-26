@@ -30,6 +30,7 @@ interface CalendarEvent {
     description: string,
     date: Date,
     endDate: Date,
+    time: string,
 }
 
 interface CalendarDayData {
@@ -204,10 +205,11 @@ export class CalendarElement extends LitElement {
             const parsedEvents: CalendarEvent[] = rawEvents.map((e) => ({
                 title: e.title,
                 type: e.type,
-                location: e.location,
+                location: e.location ? e.location : null,
                 description: e.description,
                 date: new Date(e.date),
-                endDate: e.endDate ? new Date(e.endDate) : new Date(e.date)
+                endDate: e.endDate ? new Date(e.endDate) : new Date(e.date),
+                time : e.time ? e.time : null,
             }))
 
             // Apply the parsed dates to allDays
@@ -367,8 +369,10 @@ export class CalendarElement extends LitElement {
         <window-dialog windowTitle=${this._selectedEvents.length > 1 ? "Events" : "Event"} @window-dialog-closed=${this._closeCalendarEventDialog}>
             ${this._selectedEvents.length > 0 ? this._selectedEvents.map((e) => html`
             <h2>${e.title}</h2>
-            <p>${e.date.toLocaleDateString("en-GB")} ${e.date.getTime() != e.endDate.getTime() ? html`- ${e.endDate.toLocaleDateString("en-GB")}` : ""}</p>
-            <p><strong>Location: </strong> ${e.location}</p>
+            <p><x-icon iconName="calendar" size="15"></x-icon> ${e.date.toLocaleDateString("en-GB")} ${e.date.getTime() != e.endDate.getTime() ? html`- ${e.endDate.toLocaleDateString("en-GB")}` : ""}
+            ${e.time ? html`<x-icon iconName="alarm-clock" size="15"></x-icon> ${e.time}` : ""}
+            ${e.location ? html`<x-icon iconName="map-pin" size="15"></x-icon> ${e.location}` : ""}
+            </p>
             <p><strong>Description: </strong> ${e.description}</p>
             `) : ""}
         </window-dialog>

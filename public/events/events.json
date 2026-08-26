@@ -1,18 +1,16 @@
 [
     {
-      "title": "Exams",
+      "title": "Reading week",
       "date": "2026-10-24",
       "endDate": "2026-11-01",
       "type": "exams",
-      "location": "",
       "description": "Assessment and Referral Period (Mid-term)"
     },
     {
-      "title": "Exams",
+      "title": "Reading week",
       "date": "2026-12-05",
       "endDate": "2026-12-20",
       "type": "exams",
-      "location": "",
       "description": "Assessment and Referral Period (Mid-term)"
     },
     {
@@ -20,7 +18,6 @@
       "date": "2026-12-21",
       "endDate": "2027-01-17",
       "type": "holiday",
-      "location": "",
       "description": "Merry Christmas!"
     },
     {
@@ -28,7 +25,6 @@
       "date": "2027-02-20",
       "endDate": "2027-02-28",
       "type": "exams",
-      "location": "",
       "description": "Assessment and Referral Periods"
     },
     {
@@ -36,7 +32,6 @@
       "date": "2027-03-20",
       "endDate": "2027-04-25",
       "type": "holiday",
-      "location": "",
       "description": "Happy Easter!"
     },
     {
@@ -44,12 +39,12 @@
       "date": "2027-04-26",
       "endDate": "2027-06-04",
       "type": "exams",
-      "location": "",
       "description": "The End"
     },
     {
       "title": "Ice Breaker",
       "date" : "2026-09-25",
+      "time" : "18:00 - 20:00",
       "type" : "social",
       "location" : "Guildhall Square & Deco",
       "description" : "Icebreaker event consisting of a ~25 minute treasure hunt through Portsmouth (PRIZES ON OFFER). Followed by drinks at the Deco - alcohol is optional."
@@ -57,6 +52,7 @@
     {
       "title" : "CFNCS W1",
       "date" : "2026-09-23",
+      "time" : "14:00 - 15:00",
       "type" : "normal",
       "location" : "TBD",
       "description" : "Coding For None Coders induction session"
@@ -64,6 +60,7 @@
     {
       "title" : "CFNCS W2",
       "date" : "2026-09-30",
+      "time" : "14:00 - 15:00",
       "type" : "normal",
       "location" : "TBD",
       "description" : "Variables, data types, and basic maths"
@@ -71,6 +68,7 @@
     {
       "title" : "CFNCS W3",
       "date" : "2026-10-07",
+      "time" : "14:00 - 15:00",
       "type" : "normal",
       "location" : "TBD",
       "description" : "Boolean operations and branching"
@@ -78,6 +76,7 @@
     {
       "title" : "CFNCS W4",
       "date" : "2026-10-14",
+      "time" : "14:00 - 15:00",
       "type" : "normal",
       "location" : "TBD",
       "description" : "Lists sets and dictionaries"
@@ -85,6 +84,7 @@
     {
       "title" : "CFNCS W5",
       "date" : "2026-10-21",
+      "time" : "14:00 - 15:00",
       "type" : "normal",
       "location" : "TBD",
       "description" : "Functions and loops"
